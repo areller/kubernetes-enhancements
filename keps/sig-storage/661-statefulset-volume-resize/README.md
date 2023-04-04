@@ -98,6 +98,12 @@ tags, and then generate with `hack/update-toc.sh`.
       - [Changes To Revision Control](#changes-to-revision-control)
       - [Unreliability of Events](#unreliability-of-events)
       - [Provide Clarity On Failure Scenarios](#provide-clarity-on-failure-scenarios)
+    - [User Stories (Optional)](#user-stories-optional)
+      - [Expansion of Volume Required to Address the Space Exhaustion](#expansion-of-volume-required-to-address-the-space-exhaustion)
+      - [Expansion of Volume Required for Auto Scaled Replicas](#expansion-of-volume-required-for-auto-scaled-replicas)
+      - [Expansion Success Identification](#expansion-success-identification)
+      - [Early Expansion Failure Identification](#early-expansion-failure-identification)
+      - [Expansion Failure Recover](#expansion-failure-recover)
   - [Implementation Details](#implementation-details)
     - [API changes](#api-changes-1)
     - [API server validation relaxation](#api-server-validation-relaxation)
@@ -533,6 +539,48 @@ We'll need to document the fact that the user should probably use events as a tr
 This proposal introduces multiple failure scenarios that are going to be handled at the different places, and reported in different manner. Some will be caught during validation, other will be reported as an error event and will require troubleshooting by the user.  
 
 We'll have to provide clear documentation on the different failure scenarios, what the user can expect to be caught during valiation (eg storage class not supporting expansion) and what will be caught only during the reconciliation logic (eg user is trying to decrease size below or equal to PVC capacity; the CSI driver doesn't support online expansion). 
+
+### User Stories (Optional)
+
+<!--
+Detail the things that people will be able to do if this KEP is implemented.
+Include as much detail as possible so that people can understand the "how" of
+the system. The goal here is to make this feel real for users without getting
+bogged down.
+-->
+
+#### Expansion of Volume Required to Address the Space Exhaustion
+
+As a User/Cluster administrator I notice that the PV resource associated with the PVCs bound to a replica of the `StatefulSet` is running out of space. Such, disk space exhaustion can lead to application
+downtime and adversely impact the SLO/SLA agreements with my customer.
+In order to mitigate such adverse impacts, I should be able to expand the volumes associated with the `StatefulSet` by performing an update
+to the `volumeClaimTemplate` construct.
+
+#### Expansion of Volume Required for Auto Scaled Replicas
+
+As a user/cluster administrator, I should be able to expand the volumes assocaited with the `StatefulSet` resources in such a way that
+scaling up the `StatefulSet` resources to a higher replicate count should create the new PVCs with the update size in order to avoid
+additional operational overhead of scaling up the newly created PVC to match the size of the other PVCs associated with the same `StatefulSet`
+
+
+#### Expansion Success Identification
+
+As a user/cluster administrator, I should be able to identify in a precise way that the expansion workflow has completed successfully. This
+ability will help me build additional validation/tooling in my workflow that can determine the status of Expansion and make decision as to
+wether the workflow should be completed or failed.
+
+I will be able to leverage this feature in components such as Helm post upgrade/post install hook to make sure the expansion has completed
+before I can mark the chart successfully deployed.
+
+#### Early Expansion Failure Identification
+
+As a user/cluster administrator, I want expansion failure to be discovered as early as possible in order to be able to avoid unwanted failure
+scenarios such as partial expansion failure.
+
+#### Expansion Failure Recover
+
+As a user/Cluster administrator, I should be able to recover out of the volume expansion failures either by manual intervention or in a
+programmatic way by following certain standard guidelines.
 
 ## Implementation Details
 
