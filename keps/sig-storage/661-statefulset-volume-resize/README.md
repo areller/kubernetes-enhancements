@@ -74,76 +74,56 @@ tags, and then generate with `hack/update-toc.sh`.
 -->
 
 <!-- toc -->
-- [KEP-0661: StatefulSet volume resize](#kep-0661-statefulset-volume-resize)
-  - [Release Signoff Checklist](#release-signoff-checklist)
-  - [Summary](#summary)
-  - [Motivation](#motivation)
-    - [Goals](#goals)
-    - [Non-Goals](#non-goals)
-  - [Proposal](#proposal)
-    - [Possible Errors/Failures](#possible-errorsfailures)
-      - [During Validation/Admission](#during-validationadmission)
-      - [When Patching The PVC Object](#when-patching-the-pvc-object)
-      - [Asynchronous Errors/Failures](#asynchronous-errorsfailures)
-    - [Validation](#validation)
-      - [Validation Of The Storage Class](#validation-of-the-storage-class)
-      - [Validation Of CSI Driver Capabilities](#validation-of-csi-driver-capabilities)
-      - [Validating That The Volume Size Doesn't Decrease](#validating-that-the-volume-size-doesnt-decrease)
-    - [Error Indications To The User](#error-indications-to-the-user)
-    - [Feedback](#feedback)
-    - [Revision control](#revision-control)
-    - [Risks and Mitigation](#risks-and-mitigation)
-      - [Change In StatefulSet Reconciliation Logic](#change-in-statefulset-reconciliation-logic)
-      - [API Changes](#api-changes)
-      - [Changes To Revision Control](#changes-to-revision-control)
-      - [Unreliability of Events](#unreliability-of-events)
-      - [Provide Clarity On Failure Scenarios](#provide-clarity-on-failure-scenarios)
-  - [Implementation Details](#implementation-details)
-    - [API changes](#api-changes-1)
-    - [API server validation relaxation](#api-server-validation-relaxation)
-    - [RBAC changes.](#rbac-changes)
-    - [StatefulSet controller changes](#statefulset-controller-changes)
-      - [PVC Capacity Notifications](#pvc-capacity-notifications)
-      - [Main Reconciliation Logic](#main-reconciliation-logic)
-    - [Test Plan](#test-plan)
-    - [Graduation Criteria](#graduation-criteria)
-    - [Upgrade / Downgrade Strategy](#upgrade--downgrade-strategy)
-    - [Version Skew Strategy](#version-skew-strategy)
-  - [Production Readiness Review Questionnaire](#production-readiness-review-questionnaire)
-    - [Feature Enablement and Rollback](#feature-enablement-and-rollback)
-          - [How can this feature be enabled / disabled in a live cluster?](#how-can-this-feature-be-enabled--disabled-in-a-live-cluster)
-          - [Does enabling the feature change any default behavior?](#does-enabling-the-feature-change-any-default-behavior)
-          - [Can the feature be disabled once it has been enabled (i.e. can we roll back the enablement)?](#can-the-feature-be-disabled-once-it-has-been-enabled-ie-can-we-roll-back-the-enablement)
-          - [What happens if we reenable the feature if it was previously rolled back?](#what-happens-if-we-reenable-the-feature-if-it-was-previously-rolled-back)
-          - [Are there any tests for feature enablement/disablement?](#are-there-any-tests-for-feature-enablementdisablement)
-    - [Rollout, Upgrade and Rollback Planning](#rollout-upgrade-and-rollback-planning)
-          - [How can a rollout or rollback fail? Can it impact already running workloads?](#how-can-a-rollout-or-rollback-fail-can-it-impact-already-running-workloads)
-          - [What specific metrics should inform a rollback?](#what-specific-metrics-should-inform-a-rollback)
-          - [Were upgrade and rollback tested? Was the upgrade-\>downgrade-\>upgrade path tested?](#were-upgrade-and-rollback-tested-was-the-upgrade-downgrade-upgrade-path-tested)
-          - [Is the rollout accompanied by any deprecations and/or removals of features, APIs, fields of API types, flags, etc.?](#is-the-rollout-accompanied-by-any-deprecations-andor-removals-of-features-apis-fields-of-api-types-flags-etc)
-    - [Monitoring Requirements](#monitoring-requirements)
-          - [How can an operator determine if the feature is in use by workloads?](#how-can-an-operator-determine-if-the-feature-is-in-use-by-workloads)
-          - [How can someone using this feature know that it is working for their instance?](#how-can-someone-using-this-feature-know-that-it-is-working-for-their-instance)
-          - [What are the reasonable SLOs (Service Level Objectives) for the enhancement?](#what-are-the-reasonable-slos-service-level-objectives-for-the-enhancement)
-          - [What are the SLIs (Service Level Indicators) an operator can use to determine the health of the service?](#what-are-the-slis-service-level-indicators-an-operator-can-use-to-determine-the-health-of-the-service)
-          - [Are there any missing metrics that would be useful to have to improve observability of this feature?](#are-there-any-missing-metrics-that-would-be-useful-to-have-to-improve-observability-of-this-feature)
-    - [Dependencies](#dependencies)
-          - [Does this feature depend on any specific services running in the cluster?](#does-this-feature-depend-on-any-specific-services-running-in-the-cluster)
-    - [Scalability](#scalability)
-          - [Will enabling / using this feature result in any new API calls?](#will-enabling--using-this-feature-result-in-any-new-api-calls)
-          - [Will enabling / using this feature result in introducing new API types?](#will-enabling--using-this-feature-result-in-introducing-new-api-types)
-          - [Will enabling / using this feature result in any new calls to the cloud provider?](#will-enabling--using-this-feature-result-in-any-new-calls-to-the-cloud-provider)
-          - [Will enabling / using this feature result in increasing size or count of the existing API objects?](#will-enabling--using-this-feature-result-in-increasing-size-or-count-of-the-existing-api-objects)
-          - [Will enabling / using this feature result in increasing time taken by any operations covered by existing SLIs/SLOs?](#will-enabling--using-this-feature-result-in-increasing-time-taken-by-any-operations-covered-by-existing-slisslos)
-          - [Will enabling / using this feature result in non-negligible increase of resource usage (CPU, RAM, disk, IO, ...) in any components?](#will-enabling--using-this-feature-result-in-non-negligible-increase-of-resource-usage-cpu-ram-disk-io--in-any-components)
-    - [Troubleshooting](#troubleshooting)
-          - [How does this feature react if the API server and/or etcd is unavailable?](#how-does-this-feature-react-if-the-api-server-andor-etcd-is-unavailable)
-          - [What are other known failure modes?](#what-are-other-known-failure-modes)
-          - [What steps should be taken if SLOs are not being met to determine the problem?](#what-steps-should-be-taken-if-slos-are-not-being-met-to-determine-the-problem)
-  - [Implementation History](#implementation-history)
-  - [Drawbacks](#drawbacks)
-  - [Alternatives](#alternatives)
-  - [Infrastructure Needed (Optional)](#infrastructure-needed-optional)
+- [Release Signoff Checklist](#release-signoff-checklist)
+- [Summary](#summary)
+- [Motivation](#motivation)
+  - [Goals](#goals)
+  - [Non-Goals](#non-goals)
+- [Proposal](#proposal)
+  - [Possible Errors/Failures](#possible-errorsfailures)
+    - [During Validation/Admission](#during-validationadmission)
+    - [When Patching The PVC Object](#when-patching-the-pvc-object)
+    - [Asynchronous Errors/Failures](#asynchronous-errorsfailures)
+  - [Validation](#validation)
+    - [Validation Of The Storage Class](#validation-of-the-storage-class)
+    - [Validation Of CSI Driver Capabilities](#validation-of-csi-driver-capabilities)
+    - [Validating That The Volume Size Doesn't Decrease](#validating-that-the-volume-size-doesnt-decrease)
+  - [Error Indications To The User](#error-indications-to-the-user)
+  - [Revision control](#revision-control)
+  - [Risks and Mitigation](#risks-and-mitigation)
+    - [Change In StatefulSet Reconciliation Logic](#change-in-statefulset-reconciliation-logic)
+    - [API Changes](#api-changes)
+    - [Changes To Revision Control](#changes-to-revision-control)
+    - [Unreliability of <a href="https://kubernetes.io/docs/reference/kubernetes-api/cluster-resources/event-v1/">Events</a>](#unreliability-of-events)
+    - [Provide Clarity On Failure Scenarios](#provide-clarity-on-failure-scenarios)
+  - [User Stories (Optional)](#user-stories-optional)
+    - [Expansion of Volume Required to Address the Space Exhaustion](#expansion-of-volume-required-to-address-the-space-exhaustion)
+    - [Expansion of Volume Required for Auto Scaled Replicas](#expansion-of-volume-required-for-auto-scaled-replicas)
+    - [Expansion Success Identification](#expansion-success-identification)
+    - [Early Expansion Failure Identification](#early-expansion-failure-identification)
+    - [Expansion Failure Recover](#expansion-failure-recover)
+- [Implementation Details](#implementation-details)
+  - [API changes](#api-changes-1)
+  - [API server validation relaxation](#api-server-validation-relaxation)
+  - [RBAC changes.](#rbac-changes)
+  - [StatefulSet controller changes](#statefulset-controller-changes)
+    - [PVC Capacity Notifications](#pvc-capacity-notifications)
+    - [Main Reconciliation Logic](#main-reconciliation-logic)
+  - [Test Plan](#test-plan)
+  - [Graduation Criteria](#graduation-criteria)
+  - [Upgrade / Downgrade Strategy](#upgrade--downgrade-strategy)
+  - [Version Skew Strategy](#version-skew-strategy)
+- [Production Readiness Review Questionnaire](#production-readiness-review-questionnaire)
+  - [Feature Enablement and Rollback](#feature-enablement-and-rollback)
+  - [Rollout, Upgrade and Rollback Planning](#rollout-upgrade-and-rollback-planning)
+  - [Monitoring Requirements](#monitoring-requirements)
+  - [Dependencies](#dependencies)
+  - [Scalability](#scalability)
+  - [Troubleshooting](#troubleshooting)
+- [Implementation History](#implementation-history)
+- [Drawbacks](#drawbacks)
+- [Alternatives](#alternatives)
+- [Infrastructure Needed (Optional)](#infrastructure-needed-optional)
 <!-- /toc -->
 
 ## Release Signoff Checklist
@@ -533,6 +513,48 @@ We'll need to document the fact that the user should probably use events as a tr
 This proposal introduces multiple failure scenarios that are going to be handled at the different places, and reported in different manner. Some will be caught during validation, other will be reported as an error event and will require troubleshooting by the user.  
 
 We'll have to provide clear documentation on the different failure scenarios, what the user can expect to be caught during valiation (eg storage class not supporting expansion) and what will be caught only during the reconciliation logic (eg user is trying to decrease size below or equal to PVC capacity; the CSI driver doesn't support online expansion). 
+
+### User Stories (Optional)
+
+<!--
+Detail the things that people will be able to do if this KEP is implemented.
+Include as much detail as possible so that people can understand the "how" of
+the system. The goal here is to make this feel real for users without getting
+bogged down.
+-->
+
+#### Expansion of Volume Required to Address the Space Exhaustion
+
+As a User/Cluster administrator I notice that the PV resource associated with the PVCs bound to a replica of the `StatefulSet` is running out of space. Such, disk space exhaustion can lead to application
+downtime and adversely impact the SLO/SLA agreements with my customer.
+In order to mitigate such adverse impacts, I should be able to expand the volumes associated with the `StatefulSet` by performing an update
+to the `volumeClaimTemplate` construct.
+
+#### Expansion of Volume Required for Auto Scaled Replicas
+
+As a user/cluster administrator, I should be able to expand the volumes associated with the `StatefulSet` resources in such a way that
+scaling up the `StatefulSet` resources to a higher replicate count should create the new PVCs with the update size in order to avoid
+additional operational overhead of scaling up the newly created PVC to match the size of the other PVCs associated with the same `StatefulSet`
+
+
+#### Expansion Success Identification
+
+As a user/cluster administrator, I should be able to identify in a precise way that the expansion workflow has completed successfully. This
+ability will help me build additional validation/tooling in my workflow that can determine the status of Expansion and make decision as to
+wether the workflow should be completed or failed.
+
+I will be able to leverage this feature in components such as Helm post upgrade/post install hook to make sure the expansion has completed
+before I can mark the chart successfully deployed.
+
+#### Early Expansion Failure Identification
+
+As a user/cluster administrator, I want expansion failure to be discovered as early as possible in order to be able to avoid unwanted failure
+scenarios such as partial expansion failure.
+
+#### Expansion Failure Recover
+
+As a user/Cluster administrator, I should be able to recover out of the volume expansion failures either by manual intervention or in a
+programmatic way by following certain standard guidelines.
 
 ## Implementation Details
 
